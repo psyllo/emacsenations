@@ -1,0 +1,27 @@
+* TODO Save currently open files and points to restore when project is re-opened.
+* TODO Project menu should show hide with project-mode enable/disable
+* TODO Option to run all search commands while ignoring path-cache and just looking on disk.
+* TODO File searches should optionally auto-complete as you type or hit tab
+* TODO Show current project in mode line
+** Swich between projects from mode line as well
+* TODO In search results and path-cache dump files should be clickable links.
+* TODO Processing of tags-form not tested for using etags and elisp symbols, but it works when no symbols are specified.
+* TODO Blank input should return silently. Right now it searches
+* TODO From where cursor is
+** Find class def
+** Find function def
+** Full-text search
+** File name search
+** All should be completing if more than one result is found.
+* TODO Refactor a rename:
+** Fuzzy match on word
+** Default to normal word separation plus camel-case word separation.
+** Review refactor
+** Perform refactor
+** Step through matches
+* TODO Search within files names matching a regex
+* TODO LOC
+** Total LOC in file names matching regex
+** Total LOC in all files
+** Total LOC in all files matching this list of regex
+*** Consider using a project variable: project-loc-regexes
