@@ -23,7 +23,8 @@
 (defcustom project-menu-string "Project"
   "The string that appears in the menu.")
 
-(defcustom project-search-exclusion-regexes-default '("\\.svn" "\\.jar$" "\\.class$" "\\.exe$" "\\.png$"
+(defcustom project-search-exclusion-regexes-default '("\\.git" "\\.cake" "[/\\\\]lib\\b"
+                                                      "\\.svn" "\\.jar$" "\\.class$" "\\.exe$" "\\.png$"
                                                       "\\.gif$" "\\.jpg$" "\\.jpeg$" "\\.ico$" "\\.log$"
                                                       "\\.rtf$" "\\.bin$" "\\.tar$" "\\.tgz$" "\\.gz$"
                                                       "\\.bz2$" "\\.zip$" "\\.rar$" "\\.cab$" "\\.msi$"
