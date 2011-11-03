@@ -65,6 +65,10 @@ The form must be like the following:
   "If nil the path-cache of a project will not be saved to the project file."
   :group 'project)
 
+(defcustom project-fuzzy-search-dash-underscore-are-equal-p t
+  "If non-nil dashes and underscore are equal for search purposes."
+  :group 'project)
+
 (define-minor-mode project-mode
   "Toggle project mode.
    With no argument, this command toggles the mode.
@@ -250,6 +254,8 @@ DAdd a search directory to project: ")
 (defun project-search-text (regex)
   (interactive "MFull-text REGEX: ")
   (project-ensure-current)
+  (when (not (> (length (replace-regexp-in-string " " "" regex)) 0))
+    (error "Regex cannot be merely empty or just whitespace."))
   (let ((matches nil))
     (dolist (path (project-path-cache-get (project-current)))
       (project-run-regex-on-file path regex
@@ -738,14 +744,21 @@ DAdd a search directory to project: ")
 (defun project-full-text-search-results-buffer-set (project buf)
   (put (project-current) 'project-full-text-search-results-buffer buf))
 
+(defun project-file-path-normalize-for-fuzzy-search (s)
+  (if project-fuzzy-search-dash-underscore-are-equal-p
+      (replace-regexp-in-string "-" "_" s)
+    s))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Functions that have no knowledge of the concept of projects
 
 (defun* project-fuzzy-distance-pct-for-files (file1 file2 &optional (ignore-ext t))
   (if ignore-ext
-      (project-fuzzy-distance-pct (project-file-strip-extension file1)
-                                  (project-file-strip-extension file2))
+      (project-fuzzy-distance-pct (project-file-path-normalize-for-fuzzy-search
+                                   (project-file-strip-extension file1))
+                                  (project-file-path-normalize-for-fuzzy-search
+                                   (project-file-strip-extension file2)))
     (project-fuzzy-distance-pct file1 file2)))
 
 (defun project-strip-assumed-file-extensions (file)
