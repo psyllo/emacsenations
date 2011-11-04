@@ -4,8 +4,9 @@
 ;; Created: 02-Feb-2010
 ;;
 ;; Synopsis:
-;;   * Finding files is greatly simplified (see key bindings)
-;;   * TAGS files for project files.
+;;   * Finding/opening files is greatly simplified (see key bindings)
+;;   * Regex search all project files.
+;;   * TAGS files to do function definition lookups etc.
 ;;
 
 (require 'cl)
@@ -31,18 +32,18 @@
                                                       "\\.o$" "\\.a$" "\\.dll$" "\\.pdf$" "\\.tmp$"
                                                       "\\.war$" "\\bTAGS\\b")
   "File paths that match these regexes will be excluded from any type of search"
-  :group 'project)
+  :group 'project-mode)
 
 (defcustom project-fuzzy-match-tolerance-default 20
   "Precentage. The higher the more tolerant fuzzy matches will be."
-  :group 'project)
+  :group 'project-mode)
 
 (defcustom project-tags-form-default '(".*" ('etags))
   "Used to create tags. Useful for when extending project mode.
 The form must be like the following:
 '(\".groovy$\"
-  ('elisp \"regex1\"
-          \"regex2\") ; generate tags using elisp ('elisp is the default)
+  ('elisp (\"regex1\" group-num)
+          (\"regex2\" group-num)) ; generate tags using elisp ('elisp is the default)
   \".clj$\"
   ('etags \"-r 'etags regex argument'\"
           \"-R 'etags regex exclusion'\") ; generate tags using etags
@@ -51,23 +52,23 @@ The form must be like the following:
   \".js$\"
   ('ignore))
 "
-  :group 'project)
+  :group 'project-mode)
 
 (defcustom project-extension-for-saving ".proj"
   "Appended to the file name of saved projects."
-  :group 'project)
+  :group 'project-mode)
 
 (defcustom project-proj-files-dir "~/.emacs.d"
   "Where project files are saved."
-  :group 'project)
+  :group 'project-mode)
 
 (defcustom project-path-cache-save-p nil
   "If nil the path-cache of a project will not be saved to the project file."
-  :group 'project)
+  :group 'project-mode)
 
 (defcustom project-fuzzy-search-dash-underscore-are-equal-p t
   "If non-nil dashes and underscore are equal for search purposes."
-  :group 'project)
+  :group 'project-mode)
 
 (define-minor-mode project-mode
   "Toggle project mode.
@@ -82,8 +83,7 @@ The form must be like the following:
   :global t
   ;; The minor mode bindings.
   :keymap
-  '(;; Commands on projects start with:............. 'p'
-    ("\M-+n" . project-new)
+  '(("\M-+n" . project-new)
     ("\M-+o" . project-open)
     ("\M-+a" . project-show-current-name)
     ("\M-+p" . project-edit-search-paths)
@@ -101,11 +101,10 @@ The form must be like the following:
     ("\M-+yf" . project-filesystem-search)
     ("\M-+yz" . project-im-feeling-lucky-fuzzy)
     ("\M-+yx" . project-im-feeling-lucky-regex))
-  :group 'project)
+  :group 'project-mode)
 
 ;;; Hooks
 (add-hook 'project-mode-hook 'project-mode-menu)
-(add-hook 'emacs-startup-hook (lambda nil (run-hooks 'project-mode-hook)))
 
 ;;;###autoload
 
@@ -441,9 +440,9 @@ DAdd a search directory to project: ")
       (let (entries)
         (dolist (regex regexes)
           (goto-char (point-min))
-          (while (re-search-forward regex nil t)
+          (while (re-search-forward (first regex) nil t)
             (let (byte-offset line match)
-              (setq match (match-string 0))
+              (setq match (match-string (second regex)))
               (setq byte-offset (- (point) (length match)))
               (setq line (line-number-at-pos))
               (setq entries (append entries (list (concat match ""

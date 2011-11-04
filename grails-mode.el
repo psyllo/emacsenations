@@ -69,11 +69,11 @@
         "\\.groovy$"
         ;; Regexes that are run for the file name match
         (;; classes
-         "^class\s+\\w+"
+         ("^class\s+\\(\\w+\\)" 1)
          ;; members
-         ,(concat "^\\(\s\\{" (number-to-string tab-width) "\\}\\|\t\\)\\w+\s+\\w+[^\r\n$({=]+[({=]?")
+         (,(concat "^\\(\s\\{" (number-to-string tab-width) "\\}\\|\t\\)\\w+\s+\\w+[^\r\n$({=]+[({=]?") 0)
          ;; closures defined in method bodies
-         ,(concat "^\\(\s\\{" (number-to-string (* 2 tab-width)) "\\}\\|\t\t\\)\\w+\\.\\w+\s*=\s*{")
+         (,(concat "^\\(\s\\{" (number-to-string (* 2 tab-width)) "\\}\\|\t\t\\)\\w+\\.\\w+\s*=\s*{") 0)
          )))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
