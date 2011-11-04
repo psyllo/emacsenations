@@ -10,7 +10,7 @@
 
 (defcustom project-tags-form-clojure
   '(".clj$"
-    ('elisp ("(def[a-z0-9$?<>+*!_-]*[ \r\n\t]+\\([a-z0-9$?<>+*!_-]+\\)" 1)))
+    ('elisp ("(def[a-z0-9$?<>+*!_-]*[ \r\n\t]+\\([a-z0-9$?<>+*!_-]+\\)" 0)))
   "Overwrites `PROJECT-TAGS-FORM-DEFAULT' for generation of TAGS."
   :group 'project-mode)
 
@@ -40,8 +40,9 @@
 (defun clojure-project-mode-init nil
   (interactive)
   (let ((k-def '("Find Unit Test For Current" . clojure-project-find-unit-test-for-current)))
-    (setq project-tags-form-default
-          project-tags-form-clojure)
+    (project-add-to-tags-form (project-current)
+                              (first project-tags-form-clojure)
+                              (second project-tags-form-clojure))
     (when project-mode
       (define-key global-map [C-f10] k-def)
       (define-key

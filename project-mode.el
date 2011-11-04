@@ -39,9 +39,11 @@
   :group 'project-mode)
 
 (defcustom project-tags-form-default '(".*" ('etags))
-  "Used to create tags. Useful for when extending project mode.
-The form must be like the following:
-'(\".groovy$\"
+  "Used to create a TAGS file. It is recommended that you use
+`PROJECT-ADD-TO-TAGS-FORM' to add to this form when writing an
+extension to project-mode. Useful for when extending project
+mode. The form must be like the following:
+ '(\".groovy$\"
   ('elisp (\"regex1\" group-num)
           (\"regex2\" group-num)) ; generate tags using elisp ('elisp is the default)
   \".clj$\"
@@ -355,6 +357,18 @@ DAdd a search directory to project: ")
   (when (not (project-disable-auto-tags-get (project-current)))
     (project-tags-refresh))
   (message (concat "Done refreshing project '" (project-current-name) "'")))
+
+(defun project-add-to-tags-form (project file-regex tags-form)
+  "The `PROJECT' arg can be nil in which case only the
+`PROJECT-TAGS-FORM-DEFAULT' will be updated."
+  (interactive)
+  (let ((new-entry (list file-regex tags-form)))
+    (setq project-tags-form-default
+          (append new-entry project-tags-form-default))
+    (when project
+      (let ((s (project-tags-form-get project)))
+        (project-tags-form-set project new-entry))))
+  nil)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
