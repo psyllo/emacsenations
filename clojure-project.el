@@ -10,6 +10,15 @@
 ;;
 ;; Synopsis: Extends project-mode for Clojure specific needs.
 ;;
+;; Installation:
+;; (require 'clojure-project)
+;; (setq project-mode t)
+;; (add-hook 'emacs-startup-hook
+;;           (lambda nil
+;;             (run-mode-hooks 'project-mode-hook)
+;;             (project-load-all) ; Loads all saved projects. Not required.
+;;             (clojure-project-init)))
+;;
 
 (require 'project-mode)
 
