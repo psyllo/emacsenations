@@ -1,7 +1,12 @@
-;;; project-mode.el
-;;
-;; Author: Benjamin Cluff
-;; Created: 02-Feb-2010
+;;; project-mode.el --- Define code projects. Full-text search, etc.
+
+;; Copyright 2010-2012 Benjamin Cluff
+
+;; Author: Benjamin Cluff <psyllo@gmail.com>
+;; URL: https://github.com/psyllo/emacsenations
+;; Created: 03-Feb-2010
+;; Version: 1.0
+;; Package-Requires: ((levenshtein "1.0"))
 ;;
 ;; Synopsis:
 ;;   * Finding/opening files is greatly simplified (see key bindings)
@@ -43,16 +48,12 @@
 `PROJECT-ADD-TO-TAGS-FORM' to add to this form when writing an
 extension to project-mode. Useful for when extending project
 mode. The form must be like the following:
- '(\".groovy$\"
-  ('elisp (\"regex1\" group-num)
-          (\"regex2\" group-num)) ; generate tags using elisp ('elisp is the default)
-  \".clj$\"
-  ('etags \"-r 'etags regex argument'\"
-          \"-R 'etags regex exclusion'\") ; generate tags using etags
-  \".c$\"
-  ('etags) ; generate using etags language auto-detect
-  \".js$\"
-  ('ignore))
+ '(\".groovy$\" ('elisp (\"regex1\" group-num)
+                        (\"regex2\" group-num))
+   \".clj$\"    ('etags \"-r 'etags regex argument'\"
+                        \"-R 'etags regex exclusion'\")
+   \".c$\"      ('etags) ; generate using etags language auto-detect
+   \".js$\"     ('ignore))
 "
   :group 'project-mode)
 
@@ -104,9 +105,6 @@ mode. The form must be like the following:
     ("\M-+yz" . project-im-feeling-lucky-fuzzy)
     ("\M-+yx" . project-im-feeling-lucky-regex))
   :group 'project-mode)
-
-;;; Hooks
-(add-hook 'project-mode-hook 'project-mode-menu)
 
 ;;;###autoload
 
@@ -173,11 +171,15 @@ DAdd a search directory to project: ")
     (project-write project))
   (message "Done saving all projects."))
 
+(defun project-goto-line (line)
+  (progn (goto-char (point-min))
+         (forward-line (1- line))))
+
 (defun project-file-list-edit-buffer-save nil
   (interactive)
   (project-ensure-current)
   (save-excursion
-    (beginning-of-buffer)
+    (goto-char (point-min))
     (let ((buf (current-buffer))
           (button (next-button (point) t)))
       (let ((new-paths (project-buffer-lines-to-list buf)))
@@ -272,7 +274,7 @@ DAdd a search directory to project: ")
                                  ":" (number-to-string (second match)))
                          'action 'project-file-offset-button-handler)
           (insert "\n"))
-        (beginning-of-buffer)))))
+        (goto-char (point-min))))))
 
 (defun project-search-text-next nil
   (interactive)
@@ -358,13 +360,17 @@ DAdd a search directory to project: ")
     (project-tags-refresh))
   (message (concat "Done refreshing project '" (project-current-name) "'")))
 
-(defun project-add-to-tags-form (project file-regex tags-form)
+(defun project-add-to-tags-form (project file-regex s-exp)
   "The `PROJECT' arg can be nil in which case only the
-`PROJECT-TAGS-FORM-DEFAULT' will be updated."
+`PROJECT-TAGS-FORM-DEFAULT' will be updated. Duplicates will not
+be added."
   (interactive)
-  (let ((new-entry (list file-regex tags-form)))
-    (setq project-tags-form-default
-          (append new-entry project-tags-form-default))
+  (let ((new-entry (list file-regex s-exp))
+        (new-tags-form (list file-regex s-exp)))
+    (dolist (x (project-list-partition project-tags-form-default 2))
+      (when (not (equal x new-entry))
+        (setq new-tags-form (append new-tags-form x))))
+    (setq project-tags-form-default new-tags-form)
     (when project
       (let ((s (project-tags-form-get project)))
         (project-tags-form-set project new-entry))))
@@ -390,7 +396,7 @@ DAdd a search directory to project: ")
 
 (defun project-buffer-lines-to-list (buffer)
   (save-excursion
-    (beginning-of-buffer)
+    (goto-char (point-min))
     (set-buffer buffer)
     (let (ret-val start end (continue-p t))
       (while continue-p
@@ -774,9 +780,6 @@ DAdd a search directory to project: ")
                                    (project-file-strip-extension file2)))
     (project-fuzzy-distance-pct file1 file2)))
 
-(defun project-strip-assumed-file-extensions (file)
-  (project-strip-file-extensions file project-assumed-file-extensions))
-
 (defun* project-filesystem-traverse (&key (query nil)
                                           (looking-at nil)
                                           (parent-dir nil)
@@ -800,15 +803,15 @@ DAdd a search directory to project: ")
               (funcall match-handler test-results file-path))))))))
 
 (defun project-file-line-button-handler (but)
-  "Examines the button lable for the file path and line number.
-   The button label should looke like '/path/foo/bar.txt:29'
+  "Examines the button label for the file path and line number.
+   The button label should look like '/path/foo/bar.txt:29'
    Where '29' is the line number"
   (let ((colon-pos (string-match ":[0-9]+" (button-label but))))
     (let ((file-path (substring (button-label but) 0 colon-pos))
           (line (string-to-number
                  (substring (button-label but) (+ 1 colon-pos) (length (button-label but))))))
       (find-file file-path)
-      (goto-line line)
+      (project-goto-line line)
       (push-mark (point) t t)
       (end-of-line))))
 
@@ -826,6 +829,10 @@ DAdd a search directory to project: ")
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Utility functions. Function independently.
+
+(defun project-list-partition (l n)
+  (assert (zerop (mod (length l) n)))
+  (loop for l on l by #'(lambda (l) (nthcdr n l)) collect (subseq l 0 n)))
 
 (defun project-remove-trailing-dirsep (dir-path)
   (when dir-path
@@ -917,8 +924,8 @@ DAdd a search directory to project: ")
 
 (defun project-mode-menu nil
   (interactive)
-  (if (not project-mode)
-      (global-unset-key [menu-bar projmenu])
+  (when (not project-mode)
+    (global-unset-key [menu-bar projmenu])
     (progn
       (define-key-after
         global-map
@@ -1057,3 +1064,5 @@ DAdd a search directory to project: ")
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (provide 'project-mode)
+
+;;; project-mode.el ends here

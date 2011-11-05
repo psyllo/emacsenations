@@ -1,3 +1,4 @@
+* TODO clojure-project.el menus go away when you disable project-mode until you run clojure-project-init manually.
 * TODO Full-text replace via Y/N prompt. Support regex and fuzzy versions.
 * TODO Save project file path cache to .proj file.
 * TODO Promopt to save project on creation.
