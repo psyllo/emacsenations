@@ -106,6 +106,9 @@ mode. The form must be like the following:
     ("\M-+yx" . project-im-feeling-lucky-regex))
   :group 'project-mode)
 
+;;; Hooks
+(add-hook 'project-mode-hook 'project-mode-menu)
+
 ;;;###autoload
 
 (defvar *project-current* nil
@@ -924,8 +927,8 @@ be added."
 
 (defun project-mode-menu nil
   (interactive)
-  (when (not project-mode)
-    (global-unset-key [menu-bar projmenu])
+  (if (not project-mode)
+      (global-unset-key [menu-bar projmenu])
     (progn
       (define-key-after
         global-map
