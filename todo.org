@@ -1,3 +1,6 @@
+* TODO Check for cyclical references in `PROJECT-FILESYSTEM-TRAVERSE'.
+Following a symlink directory could result in infinite recursion of
+that directory contains another symlink back the first directory.
 * TODO clojure-project.el menus go away when you disable project-mode until you run clojure-project-init manually.
 * TODO Full-text replace via Y/N prompt. Support regex and fuzzy versions.
 * TODO Save project file path cache to .proj file.

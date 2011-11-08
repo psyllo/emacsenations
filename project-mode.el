@@ -17,6 +17,35 @@
 (require 'cl)
 (require 'levenshtein)
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Functions used to setup the custom variables.
+
+(defun project-add-to-search-exclusion-regexes (regexes)
+  (setq project-search-exclusion-regexes-default
+        (append project-search-exclusion-regexes-default
+                regexes)))
+
+(defun project-directories-to-regexes-for-search-exclusion (dir-names-list)
+  "Convert values to regexes that can be matched against an absolute path.
+   Arg `DIR-NAMES-LIST' should be like '(\"lib\" \".svn\")."
+  (let ((path-boundary "[\\\\/]"))
+    (mapcar (lambda (s)
+              (concat path-boundary
+                      (if (string-match "^\\." s)
+                          (concat "\\" s)
+                        s)
+                      path-boundary))
+            dir-names-list)))
+
+(defun project-add-directories-to-search-exclusion-regexes (dir-names-list)
+  "Convert with `PROJECT-DIRECTORIES-TO-REGEXES-FOR-SEARCH-EXCLUSION'
+   then pass to `PROJECT-ADD-TO-SEARCH-EXCLUSION-REGEXES'."
+  (project-add-to-search-exclusion-regexes
+   (project-directories-to-regexes-for-search-exclusion
+    dir-names-list)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defgroup project-mode nil
   "Project mode allows users to do fuzzy and regex searches on
    file names and text within a defined set of directories and
@@ -29,13 +58,28 @@
 (defcustom project-menu-string "Project"
   "The string that appears in the menu.")
 
-(defcustom project-search-exclusion-regexes-default '("\\.git" "\\.cake" "[/\\\\]lib\\b"
-                                                      "\\.svn" "\\.jar$" "\\.class$" "\\.exe$" "\\.png$"
-                                                      "\\.gif$" "\\.jpg$" "\\.jpeg$" "\\.ico$" "\\.log$"
-                                                      "\\.rtf$" "\\.bin$" "\\.tar$" "\\.tgz$" "\\.gz$"
-                                                      "\\.bz2$" "\\.zip$" "\\.rar$" "\\.cab$" "\\.msi$"
-                                                      "\\.o$" "\\.a$" "\\.dll$" "\\.pdf$" "\\.tmp$"
-                                                      "\\.war$" "\\bTAGS\\b")
+(defcustom project-search-exclusion-regexes-default
+  (append
+   ;; Convert values copied from `GREP-FIND-IGNORED-DIRECTORIES'
+   (project-directories-to-regexes-for-search-exclusion
+    '("SCCS" "RCS" "CVS" "MCVS" ".svn" ".git" ".hg" ".bzr" "_MTN" "_darcs"))
+   ;; Convert values copied from `GREP-FIND-IGNORED-FILES' to regexes
+   ;; that can be matched against an absolute path.
+   '("[\\\\/].#" "\\.o$" "~$" "\\.bin$" "\\.lbin$" "\\.so$" "\\.a$" "\\.ln$"
+     "\\.blg$" "\\.bbl$" "\\.elc$" "\\.lof$" "\\.glo$" "\\.idx$" "\\.lot$"
+     "\\.fmt$" "\\.tfm$" "\\.class$" "\\.fas$" "\\.lib$" "\\.mem$" "\\.x86f$"
+     "\\.sparcf$" "\\.fasl$" "\\.ufsl$" "\\.fsl$" "\\.dxl$" "\\.pfsl$"
+     "\\.dfsl$" "\\.p64fsl$" "\\.d64fsl$" "\\.dx64fsl$" "\\.lo$" "\\.la$"
+     "\\.gmo$" "\\.mo$" "\\.toc$" "\\.aux$" "\\.cp$" "\\.fn$" "\\.ky$"
+     "\\.pg$" "\\.tp$" "\\.vr$" "\\.cps$" "\\.fns$" "\\.kys$" "\\.pgs$"
+     "\\.tps$" "\\.vrs$" "\\.pyc$" "\\.pyo$")
+   ;; More files to exclude
+   '("\\.jar$" "\\.class$" "\\.exe$" "\\.png$"
+     "\\.gif$" "\\.jpg$" "\\.jpeg$" "\\.ico$"
+     "\\.rtf$" "\\.tar$" "\\.tgz$" "\\.gz$"
+     "\\.bz2$" "\\.zip$" "\\.rar$" "\\.cab$"
+     "\\.dll$" "\\.pdf$" "\\.tmp$" "\\.log$"
+     "\\.msi$" "\\.war$" "\\bTAGS$"))
   "File paths that match these regexes will be excluded from any type of search"
   :group 'project-mode)
 
@@ -45,16 +89,15 @@
 
 (defcustom project-tags-form-default '(".*" ('etags))
   "Used to create a TAGS file. It is recommended that you use
-`PROJECT-ADD-TO-TAGS-FORM' to add to this form when writing an
-extension to project-mode. Useful for when extending project
-mode. The form must be like the following:
- '(\".groovy$\" ('elisp (\"regex1\" group-num)
-                        (\"regex2\" group-num))
-   \".clj$\"    ('etags \"-r 'etags regex argument'\"
-                        \"-R 'etags regex exclusion'\")
-   \".c$\"      ('etags) ; generate using etags language auto-detect
-   \".js$\"     ('ignore))
-"
+  `PROJECT-ADD-TO-TAGS-FORM' to add to this form when writing an
+   extension to project-mode. Useful for when extending project
+   mode. The form must be like the following:
+   '(\".groovy$\" ('elisp (\"regex1\" group-num)
+                          (\"regex2\" group-num))
+     \".clj$\"    ('etags \"-r 'etags regex argument'\"
+                          \"-R 'etags regex exclusion'\")
+     \".c$\"      ('etags) ; generate using etags language auto-detect
+     \".js$\"     ('ignore))"
   :group 'project-mode)
 
 (defcustom project-extension-for-saving ".proj"
@@ -108,8 +151,6 @@ mode. The form must be like the following:
 
 ;;; Hooks
 (add-hook 'project-mode-hook 'project-mode-menu)
-
-;;;###autoload
 
 (defvar *project-current* nil
   "For project-mode. The project name string of the currently active project.
@@ -324,7 +365,7 @@ DAdd a search directory to project: ")
   (end-of-line)
   (let ((file-path (buffer-substring-no-properties (region-beginning) (region-end))))
     (when file-path
-      (find-file file-path))))    
+      (find-file file-path))))
 
 (defun project-edit-path-cache nil
   (interactive)
@@ -793,9 +834,12 @@ be added."
               (not (string-equal "." looking-at))
               (not (string-equal ".." looking-at)))
     (let ((file-path (project-append-to-path parent-dir looking-at)))
+      ;; TODO: Check for cyclical references. Following a symlink
+      ;; directory could result in infinite recursion of that
+      ;; directory contains another symlink back the first directory.
       (if (file-directory-p file-path)
           ;; Handle directory
-          (when (funcall test query file-path)
+          (when (funcall test query (project-add-trailing-dirsep file-path))
             (dolist (file (directory-files file-path))
               (project-filesystem-traverse :query query :looking-at file :parent-dir file-path
                                            :test test :match-handler match-handler)))
@@ -840,6 +884,11 @@ be added."
 (defun project-remove-trailing-dirsep (dir-path)
   (when dir-path
     (substring dir-path 0 (string-match "[\\\\/]*$" dir-path))))
+
+(defun project-add-trailing-dirsep (dir-path)
+  (if (string-match "[^\\\\/]$" dir-path)
+      (concat dir-path "/")
+    dir-path))
 
 (defun project-path-file-name (path)
   (replace-regexp-in-string ".*[\\\\/]+" "" path))
@@ -897,7 +946,7 @@ be added."
   (substring (buffer-name) 0 (string-match "\\(<[0-9]+>\\|$\\)" (buffer-name))))
 
 (defun project-path-as-list (file-or-dir)
-  (split-string file-or-dir "[/\\\\]"))
+  (split-string file-or-dir "[\\\\/]"))
 
 (defun project-list-as-path (l)
   (mapconcat 'identity l "/"))
@@ -919,14 +968,13 @@ be added."
 
 (defun project-file-basename (path)
   (substring path
-             (string-match "[^/\\\\]+$" path)
+             (string-match "[^\\\\/]+$" path)
              (length path)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Menu
 
 (defun project-mode-menu nil
-  (interactive)
   (if (not project-mode)
       (global-unset-key [menu-bar projmenu])
     (progn
@@ -997,7 +1045,7 @@ be added."
         global-map
         [menu-bar projmenu projref projtref]
         '("Refresh Project Tags" . project-tags-refresh))
-      
+
       (define-key
         global-map
         [menu-bar projmenu projref projpcref]
@@ -1007,7 +1055,7 @@ be added."
         global-map
         [menu-bar projmenu projref projrefall]
         '("Refresh All" . project-refresh))
-      
+
       ;; Project info
       (define-key
         global-map
@@ -1034,7 +1082,7 @@ be added."
         global-map
         [menu-bar projmenu projloadall]
         '("Load All Projects" . project-load-all))
-      
+
       (define-key
         global-map
         [menu-bar projmenu  projload]
