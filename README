@@ -1,3 +1,8 @@
 GNU Emacs Lisp code
 
-Install individual files using Marmalade. See the wiki pages for more.
+Most interesting code:
+
+project-mode.el         - Install via Marmalade
+clojure-project-mode.el - Install via Marmalade
+
+For other help see the wiki pages.
