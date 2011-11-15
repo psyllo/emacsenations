@@ -146,7 +146,8 @@
     ([C-f4] . project-search-text-previous)
     ("\M-+yf" . project-filesystem-search)
     ("\M-+yz" . project-im-feeling-lucky-fuzzy)
-    ("\M-+yx" . project-im-feeling-lucky-regex))
+    ([C-f7] . project-java-stacktrace-next)
+    ([C-f8] . project-java-stacktrace-previous))
   :group 'project-mode)
 
 ;;; Hooks
@@ -345,6 +346,59 @@ DAdd a search directory to project: ")
       (end-of-line)
       (project-open-file-for-match-selection)))
   nil)
+
+(defun project-java-stacktrace-parse-line nil
+  (save-excursion
+    (let ((bound (progn
+                   (end-of-line)
+                   (point)))
+          line-num
+          file-name)
+      (beginning-of-line)
+      (when (re-search-forward "(\\(.+?\\):\\([0-9]+\\))" bound t)
+        (setq file-name (match-string-no-properties 1))
+        (setq line-num (string-to-number (match-string-no-properties 2))))
+      (when (and file-name line-num)
+        (list file-name line-num)))))
+
+(defun project-java-stacktrace-open (file-name line-num)
+  (when (and file-name
+             line-num
+             (project-exact-search file-name))
+    (goto-line line-num)))
+
+(defun project-java-stacktrace-next-n (n)
+  (project-ensure-current)
+  (let* ((file-loc (project-java-stacktrace-parse-line))
+         (file-name (first file-loc))
+         (line-num (second file-loc)))
+    (if (and file-name line-num)
+        (progn
+          (project-stacktrace-buffer-set (project-current) (current-buffer))
+          (project-java-stacktrace-open file-name line-num))
+      (let ((stack-buf (project-stacktrace-buffer-get (project-current))))
+        (if stack-buf
+            (progn
+              (set-buffer stack-buf)
+              (forward-line n)
+              (let* ((file-loc (project-java-stacktrace-parse-line))
+                     (file-name (first file-loc))
+                     (line-num (second file-loc)))
+                (if (and file-name line-num)
+                    (project-java-stacktrace-open file-name line-num)
+                  (error "This line does not look like a Java stacktrace."))))
+          (error (concat "Stacktrace buffer not set in project "
+                         (project-current-name) ".")))))))
+
+(defun project-java-stacktrace-next nil
+  (interactive)
+  (project-ensure-current)
+  (project-java-stacktrace-next-n -1))
+
+(defun project-java-stacktrace-previous nil
+  (interactive)
+  (project-ensure-current)
+  (project-java-stacktrace-next-n 1))
 
 (defun project-open-file-for-match-selection nil
   (interactive)
@@ -807,6 +861,12 @@ be added."
 (defun project-full-text-search-results-buffer-set (project buf)
   (put (project-current) 'project-full-text-search-results-buffer buf))
 
+(defun project-stacktrace-buffer-get (project)
+  (get (project-current) 'project-stacktrace-buffer))
+
+(defun project-stacktrace-buffer-set (project buf)
+  (put (project-current) 'project-stacktrace-buffer buf))
+
 (defun project-file-path-normalize-for-fuzzy-search (s)
   (if project-fuzzy-search-dash-underscore-are-equal-p
       (replace-regexp-in-string "-" "_" s)
@@ -983,6 +1043,22 @@ be added."
         [menu-bar projmenu]
         (cons project-menu-string (make-sparse-keymap))
         'tools)
+
+      ;; Stacktrace
+      (define-key
+        global-map
+        [menu-bar projmenu projstackt]
+        (cons "Stacktraces" (make-sparse-keymap)))
+
+      (define-key
+        global-map
+        [menu-bar projmenu projstackt jstackprev]
+        '("Java Stacktrace Previous" . project-java-stacktrace-previous))
+
+      (define-key
+        global-map
+        [menu-bar projmenu projstackt jstacknext]
+        '("Java Stacktrace Next" . project-java-stacktrace-next))
 
       ;; Searching
       (define-key

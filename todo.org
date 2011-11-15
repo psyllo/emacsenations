@@ -1,3 +1,7 @@
+* TODO Are tags even necessary if clojure-mode already does it?
+* TODO In clojure-project-mode add shortcut, form test, back to source.
+* TODO CljPrj modeline should go away and CljProj menu should be a part Project menu.
+* TODO clojure-project-mode .lein-failures file still be included in path cache.
 * TODO Check for cyclical references in `PROJECT-FILESYSTEM-TRAVERSE'.
 Following a symlink directory could result in infinite recursion of
 that directory contains another symlink back the first directory.
