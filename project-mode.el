@@ -365,7 +365,7 @@ DAdd a search directory to project: ")
   (when (and file-name
              line-num
              (project-exact-search file-name))
-    (goto-line line-num)))
+    (project-goto-line line-num)))
 
 (defun project-java-stacktrace-next-n (n)
   (project-ensure-current)
