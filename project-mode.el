@@ -144,8 +144,8 @@
     ("\M-+t" . project-search-text)
     ([C-f3] . project-search-text-next)
     ([C-f4] . project-search-text-previous)
-    ("\M-+yf" . project-filesystem-search)
-    ("\M-+yz" . project-im-feeling-lucky-fuzzy)
+    ("\M-+ys" . project-filesystem-search)
+    ("\M-+yf" . project-im-feeling-lucky-fuzzy)
     ([C-f7] . project-java-stacktrace-next)
     ([C-f8] . project-java-stacktrace-previous))
   :group 'project-mode)
@@ -875,13 +875,10 @@ be added."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Functions that have no knowledge of the concept of projects
-
 (defun* project-fuzzy-distance-pct-for-files (file1 file2 &optional (ignore-ext t))
   (if ignore-ext
-      (project-fuzzy-distance-pct (project-file-path-normalize-for-fuzzy-search
-                                   (project-file-strip-extension file1))
-                                  (project-file-path-normalize-for-fuzzy-search
-                                   (project-file-strip-extension file2)))
+      (project-fuzzy-distance-pct (project-file-path-normalize-for-fuzzy-search file1)
+                                  (project-file-path-normalize-for-fuzzy-search file2))
     (project-fuzzy-distance-pct file1 file2)))
 
 (defun* project-filesystem-traverse (&key (query nil)
