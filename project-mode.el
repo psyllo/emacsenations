@@ -27,7 +27,7 @@
 
 (defun project-directories-to-regexes-for-search-exclusion (dir-names-list)
   "Convert values to regexes that can be matched against an absolute path.
-   Arg `DIR-NAMES-LIST' should be like '(\"lib\" \".svn\")."
+Arg `DIR-NAMES-LIST' should be like '(\"lib\" \".svn\")."
   (let ((path-boundary "[\\\\/]"))
     (mapcar (lambda (s)
               (concat path-boundary
@@ -38,8 +38,9 @@
             dir-names-list)))
 
 (defun project-add-directories-to-search-exclusion-regexes (dir-names-list)
-  "Convert with `PROJECT-DIRECTORIES-TO-REGEXES-FOR-SEARCH-EXCLUSION'
-   then pass to `PROJECT-ADD-TO-SEARCH-EXCLUSION-REGEXES'."
+  "Convert with
+`PROJECT-DIRECTORIES-TO-REGEXES-FOR-SEARCH-EXCLUSION' then pass
+to `PROJECT-ADD-TO-SEARCH-EXCLUSION-REGEXES'."
   (project-add-to-search-exclusion-regexes
    (project-directories-to-regexes-for-search-exclusion
     dir-names-list)))
@@ -48,10 +49,9 @@
 
 (defgroup project-mode nil
   "Project mode allows users to do fuzzy and regex searches on
-   file names and text within a defined set of directories and
-   files that make up the project.  Multiple projects can be
-   loaded at the same time and the user can switch back and forth
-   between them."
+file names and text within a defined set of directories and files
+that make up the project.  Multiple projects can be loaded at the
+same time and the user can switch back and forth between them."
   :prefix "project-"
   :group 'programming)
 
@@ -83,21 +83,24 @@
   "File paths that match these regexes will be excluded from any type of search"
   :group 'project-mode)
 
-(defcustom project-fuzzy-match-tolerance-default 20
-  "Precentage. The higher the more tolerant fuzzy matches will be."
+(defcustom project-fuzzy-match-tolerance-default 28
+  "Precentage. The higher the value the more tolerant the fuzzy
+matching will be and more results will be returned. A value of 28
+will be tolerant enough to match 'piece.c' if you accidentally
+search for 'peice.c' (transposed 'i' and 'e')."
   :group 'project-mode)
 
 (defcustom project-tags-form-default '(".*" ('etags))
   "Used to create a TAGS file. It is recommended that you use
-  `PROJECT-ADD-TO-TAGS-FORM' to add to this form when writing an
-   extension to project-mode. Useful for when extending project
-   mode. The form must be like the following:
-   '(\".groovy$\" ('elisp (\"regex1\" group-num)
-                          (\"regex2\" group-num))
-     \".clj$\"    ('etags \"-r 'etags regex argument'\"
-                          \"-R 'etags regex exclusion'\")
-     \".c$\"      ('etags) ; generate using etags language auto-detect
-     \".js$\"     ('ignore))"
+`PROJECT-ADD-TO-TAGS-FORM' to add to this form when writing an
+extension to project-mode. Useful for when extending project
+mode. The form must be like the following:
+'(\".groovy$\" ('elisp (\"regex1\" group-num)
+                        (\"regex2\" group-num))
+   \".clj$\"    ('etags \"-r 'etags regex argument'\"
+                        \"-R 'etags regex exclusion'\")
+   \".c$\"      ('etags) ; generate using etags language auto-detect
+   \".js$\"     ('ignore))"
   :group 'project-mode)
 
 (defcustom project-extension-for-saving ".proj"
@@ -118,9 +121,9 @@
 
 (define-minor-mode project-mode
   "Toggle project mode.
-   With no argument, this command toggles the mode.
-   Non-null prefix argument turns on the mode.
-   Null prefix argument turns off the mode."
+With no argument, this command toggles the mode. Non-null prefix
+argument turns on the mode.  Null prefix argument turns off the
+mode."
   ;; The initial value.
   :init-value nil
   ;; The indicator for the mode line.
@@ -141,6 +144,7 @@
     ("\M-+f" . project-fuzzy-search)
     ("\M-+x" . project-regex-search)
     ("\M-+e" . project-exact-search)
+    ("\M-+d" . project-different-extension-search)
     ("\M-+t" . project-search-text)
     ([C-f3] . project-search-text-next)
     ([C-f4] . project-search-text-previous)
@@ -154,15 +158,18 @@
 (add-hook 'project-mode-hook 'project-mode-menu)
 
 (defvar *project-current* nil
-  "For project-mode. The project name string of the currently active project.
-   You should almost always use the `PROJECT-CURRENT' function instead if this.")
+  "For project-mode. The project name string of the currently
+active project. You should almost always use the
+`PROJECT-CURRENT' function instead if this.")
 
 (defvar *project-list* nil
-  "For project-mode. List of projects. Projects are symbols that are uninterned and their plists contain project specific data.")
+  "For project-mode. List of projects. Projects are symbols that
+are uninterned and their plists contain project specific data.")
 
 (defvar project-windows-or-msdos-p (or (string-match "^windows.*" (symbol-name system-type))
                                        (string-match "^ms-dos.*" (symbol-name system-type)))
-  "Predicate indicating if this `SYSTEM-TYPE' is windows for the purpose of using the correct directory separator.")
+  "Predicate indicating if this `SYSTEM-TYPE' is windows for the
+purpose of using the correct directory separator.")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -290,6 +297,20 @@ DAdd a search directory to project: ")
   (interactive "MFind file EXACT: ")
   (project-ensure-current)
   (let ((matches (project-search-exact (project-current) file-name)))
+    (when matches
+      (if (> (length matches) 1)
+          (progn
+            (setq matches (mapcar (lambda (x) (list x)) matches))
+            (let ((choice (completing-read "Choose: " matches nil nil nil)))
+              (when choice
+                (find-file choice))))
+        (find-file (car matches))))))
+
+(defun project-different-extension-search (file-name)
+  (interactive "MFind file DIFFERENT EXTENSION (default finds matches for current buffer name): ")
+  (project-ensure-current)
+  (let* ((file-name (buffer-name))
+         (matches (project-search-different-extension (project-current) file-name)))
     (when matches
       (if (> (length matches) 1)
           (progn
@@ -590,8 +611,8 @@ be added."
 
 (defun project-disable-auto-tags-set (project value)
   "Project-mode can automatically handle the generation of tags
-   files from the files listed in the path-cache if
-   `TAGS-FORM' is populated correctly."
+files from the files listed in the path-cache if `TAGS-FORM' is
+populated correctly."
   (put project 'disable-auto-tags value))
 
 (defun project-enable-auto-tags-for-other-file-types-get (project)
@@ -599,7 +620,7 @@ be added."
 
 (defun project-enable-auto-tags-for-other-file-types-set (project value)
   "Generate tags for file types found in path-cache and that have
-   not already been processed using `TAGS-FORM'."
+not already been processed using `TAGS-FORM'."
   (put project 'enable-auto-tags-for-other-file-types value))
 
 (defun project-put (project sym val)
@@ -682,8 +703,8 @@ be added."
     (message (concat file " exists in project path-cache but not on file system."))))
 
 (defun project-find (project)
-  "If project found return it, else nil.
-  `PROJECT' can be a string or symbol."
+  "If project found return it, else nil. `PROJECT' can be a
+string or symbol."
   (when (stringp project)
     (setq project (make-symbol project)))
   (let ((projects *project-list*))
@@ -854,6 +875,20 @@ be added."
                                    (setq matches (append matches (list file-path)))))
     matches))
 
+(defun project-search-different-extension (project file-name)
+  (let ((name-wo-ext (project-file-strip-extension file-name))
+        (matches     nil))
+    (project-path-cache-traverse :project project
+                                 :name file-name
+                                 :test (lambda (file-name x)
+                                         (and (not (string-equal file-name x))
+                                              (string-equal name-wo-ext
+                                                            (project-file-strip-extension x))))
+                                 :match-handler
+                                 (lambda (test-result file-path)
+                                   (setq matches (append matches (list file-path)))))
+    matches))
+
 (defun project-full-text-search-results-buffer-get (project)
   (get (project-current) 'project-full-text-search-results-buffer))
 
@@ -908,8 +943,8 @@ be added."
 
 (defun project-file-line-button-handler (but)
   "Examines the button label for the file path and line number.
-   The button label should look like '/path/foo/bar.txt:29'
-   Where '29' is the line number"
+The button label should look like '/path/foo/bar.txt:29' Where
+'29' is the line number"
   (let ((colon-pos (string-match ":[0-9]+" (button-label but))))
     (let ((file-path (substring (button-label but) 0 colon-pos))
           (line (string-to-number
@@ -920,9 +955,9 @@ be added."
       (end-of-line))))
 
 (defun project-file-offset-button-handler (but)
-  "Examines the button lable for the file path and offset number.
-   The button label should looke like '/path/foo/bar.txt:825'
-   Where '825' is the offset in the buffer."
+  "Examines the button lable for the file path and offset
+number. The button label should looke like
+'/path/foo/bar.txt:825' Where '825' is the offset in the buffer."
   (let ((colon-pos (string-match ":[0-9]+" (button-label but))))
     (let ((file-path (substring (button-label but) 0 colon-pos))
           (offset (string-to-number
