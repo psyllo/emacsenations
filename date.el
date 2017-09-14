@@ -1,3 +1,6 @@
+(require 'org)
+(require 'dash)
+
 (defun date-part (date part)
   "`DATE' argument needs to be in this format MM/DD/YYYY."
   (if (equal 'month part)
@@ -28,3 +31,39 @@ Date arguments need to be in this format MM/DD/YYYY."
         (date (date-to-sortable-number date)))
     (and (<= start date)
          (>= end date))))
+
+(defun hms-to-seconds (hour min sec)
+  "`hour` should be an integer 0-23
+   `min` should be an integer 0-59
+   `sec` should be an integer 0-59"
+  (+ (* hour 60 60)
+     (* min 60)
+     sec))
+
+(defun seconds-to-hms (seconds)
+  "(seconds-to-hms (hms-to-seconds 9 45 0)) => (list 9 45 0)"
+  (let* ((hours (/ seconds (* 60 60)))
+         (mins (/ (- seconds (* hours 60 60)) 60))
+         (secs (- seconds (* hours 60 60) (* mins 60))))
+    (list hours mins secs)))
+
+(defun seconds-from-midnight ()
+  "Returns float of current time seconds from midnight"
+  (- (float-time) (org-time-today)))
+
+(defun hours-from-midnight ()
+  (/ (seconds-from-midnight) (* 60.0 60)))
+
+(defun hm-ampm-to-seconds (hhmm-ampm)
+  "Accepts string like 1:45pm"
+  (let* ((hhmm (mapcar 'string-to-int (split-string hhmm-ampm ":")))
+         (hour (first hhmm))
+         (min (second hhmm))
+         (ampm (substring hhmm-ampm (- (length hhmm-ampm) 2))))
+    (+ (hms-to-seconds hour min 0)
+       (if (and (equal "pm" ampm)
+                (not (eq 12 hour)))
+           (* 12 60 60)
+         0))))
+
+(provide 'benfu-date)
